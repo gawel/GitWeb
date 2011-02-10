@@ -6,24 +6,22 @@ are specific only to git-http-backend's Smart HTTP protocol.
 See __version__ statement below for indication of what version of Git's
 Smart HTTP server this backend is (designed to be) compatible with.
 
-Copyright (c) 2010  Daniel Dotsenko <dotsa@hotmail.com>
-Selected, specifically marked so classes are also
-  Copyright (C) 2006 Luke Arno - http://lukearno.com/
+Copyright (c) 2011  Gael Pasgrimaud <gael@gawel.org>
 
-This file is part of git_http_backend.py Project.
+This file is part of GitWeb Project.
 
-git_http_backend.py Project is free software: you can redistribute it and/or modify
+GitWeb Project is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 2.1 of the License, or
 (at your option) any later version.
 
-git_http_backend.py Project is distributed in the hope that it will be useful,
+GitWeb Project is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with git_http_backend.py Project.  If not, see <http://www.gnu.org/licenses/>.
+along with GitWeb Project.  If not, see <http://www.gnu.org/licenses/>.
 '''
 import os
 import sys
@@ -113,17 +111,13 @@ class GitRepository(object):
             print environ['wsgi.input']
             inputstream = environ['wsgi.input']
 
-        out = subprocessio.SubprocessIOChunker(
-            r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
-            inputstream = inputstream
-            )
-        #try:
-        #    out = subprocessio.SubprocessIOChunker(
-        #        r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
-        #        inputstream = inputstream
-        #        )
-        #except EnvironmentError, e:
-        #    raise exc.HTTPExpectationFailed()
+        try:
+            out = subprocessio.SubprocessIOChunker(
+                r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
+                inputstream = inputstream
+                )
+        except EnvironmentError, e:
+            raise exc.HTTPExpectationFailed()
 
         if git_command in [u'git-receive-pack']:
             # updating refs manually after each push. Needed for pre-1.7.0.4 git clients using regular HTTP mode.
