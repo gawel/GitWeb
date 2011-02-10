@@ -108,7 +108,6 @@ class GitRepository(object):
         if 'CONTENT_LENGTH' in environ:
             inputstream = FileWrapper(environ['wsgi.input'], request.content_length)
         else:
-            print environ['wsgi.input']
             inputstream = environ['wsgi.input']
 
         try:
@@ -139,11 +138,9 @@ class GitRepository(object):
             resp = app(request, environ)
         except exc.HTTPException, e:
             resp = e
-            print e
             log.exception(e)
         except Exception, e:
             log.exception(e)
-            print e
             resp = exc.HTTPInternalServerError()
         return resp(environ, start_response)
 
@@ -159,10 +156,7 @@ class GitDirectory(object):
         self.auto_create = auto_create
 
     def __call__(self, environ, start_response):
-        print environ['wsgi.input']
         request = Request(environ)
-        print request.path
-        print environ['wsgi.input']
         repo_name = request.path_info_pop()
         content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
         if self.content_path not in content_path:
