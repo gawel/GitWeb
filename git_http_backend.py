@@ -31,7 +31,6 @@ import socket
 import logging
 import subprocess
 import subprocessio
-from cStringIO import StringIO
 from webob import Request, Response, exc
 
 log = logging.getLogger(__name__)
@@ -71,11 +70,11 @@ class GitRepository(object):
         self.content_path = content_path
         self.valid_accepts = ['application/x-%s-result' % c for c in self.commands]
 
-    def inforefs(self, request):
+    def inforefs(self, request, environ):
         """WSGI Response producer for HTTP GET Git Smart HTTP /info/refs request."""
 
         git_command = request.GET['service']
-        if git_command no in self.commands:
+        if git_command not in self.commands:
             return exc.HTTPMethodNotAllowed()
 
         # note to self:
@@ -97,7 +96,7 @@ class GitRepository(object):
         resp.app_iter = out
         return resp
 
-    def backend(self, request):
+    def backend(self, request, environ):
         """
         WSGI Response producer for HTTP POST Git Smart HTTP requests.
         Reads commands and data from HTTP POST's body.
@@ -105,22 +104,26 @@ class GitRepository(object):
         """
 
         git_command = request.path_info.strip('/')
-        if git_command no in self.commands:
+        if git_command not in self.commands:
             return exc.HTTPMethodNotAllowed()
 
-        content_length = int(request.headers['content-length'])
-        if content_length:
-            inputstream = FileWrapper(request.body_file, content_length)
+        if 'CONTENT_LENGTH' in environ:
+            inputstream = FileWrapper(environ['wsgi.input'], request.content_length)
         else:
-            inputstream = StringIO()
+            print environ['wsgi.input']
+            inputstream = environ['wsgi.input']
 
-        try:
-            out = subprocessio.SubprocessIOChunker(
-                r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
-                inputstream = inputstream
-                )
-        except EnvironmentError, e:
-            raise exc.HTTPExpectationFailed()
+        out = subprocessio.SubprocessIOChunker(
+            r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
+            inputstream = inputstream
+            )
+        #try:
+        #    out = subprocessio.SubprocessIOChunker(
+        #        r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
+        #        inputstream = inputstream
+        #        )
+        #except EnvironmentError, e:
+        #    raise exc.HTTPExpectationFailed()
 
         if git_command in [u'git-receive-pack']:
             # updating refs manually after each push. Needed for pre-1.7.0.4 git clients using regular HTTP mode.
@@ -139,11 +142,14 @@ class GitRepository(object):
         elif [a for a in self.valid_accepts if a in request.accept]:
             app = self.backend
         try:
-            resp = app(request)
+            resp = app(request, environ)
         except exc.HTTPException, e:
-            resp = e(environ, start_response)
+            resp = e
+            print e
+            log.exception(e)
         except Exception, e:
             log.exception(e)
+            print e
             resp = exc.HTTPInternalServerError()
         return resp(environ, start_response)
 
@@ -159,7 +165,10 @@ class GitDirectory(object):
         self.auto_create = auto_create
 
     def __call__(self, environ, start_response):
+        print environ['wsgi.input']
         request = Request(environ)
+        print request.path_info
+        print environ['wsgi.input']
         repo_name = request.path_info_pop()
         content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
         if self.content_path not in content_path:
