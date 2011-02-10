@@ -25,7 +25,6 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with git_http_backend.py Project.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import io
 import os
 import sys
 
@@ -443,7 +442,7 @@ class GitHTTPBackendBase(BaseWSGIClass):
         except:
             files = []
         if not self.git_folder_signature.issubset([i.lower() for i in files]):
-            if not ( self.repo_auto_create and git_command == 'git-receive-pack' ):
+            if False: #not ( self.repo_auto_create and git_command == 'git-receive-pack' ):
                 return self.canned_handlers(environ, start_response, 'not_found')
             else:
                 # 1. traverse entire post-prefix path and check that each segment
@@ -726,6 +725,17 @@ def assemble_WSGI_git_app(*args, **kw):
 
     return selector
 
+
+def make_app(global_config, content_path='', uri_marker='', repo_auto_create=False, **local_config):
+    app = assemble_WSGI_git_app(
+        content_path = content_path,
+        uri_marker = uri_marker,
+        performance_settings = {
+            'repo_auto_create': repo_auto_create,
+            }
+    )
+    return app
+
 #class ShowVarsWSGIApp(object):
 #    def __init__(self, *args, **kw):
 #        pass
@@ -872,5 +882,3 @@ Use Keyboard Interrupt key combination (usually CTRL+C) to stop the server
             httpd.start()
         except KeyboardInterrupt:
             pass
-        finally:
-            httpd.stop()
