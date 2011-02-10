@@ -27,12 +27,39 @@ along with git_http_backend.py Project.  If not, see <http://www.gnu.org/license
 '''
 import os
 import sys
+import socket
 import logging
 import subprocess
 import subprocessio
+from cStringIO import StringIO
 from webob import Request, Response, exc
 
 log = logging.getLogger(__name__)
+
+class FileWrapper(object):
+
+    def __init__(self, fd, content_length):
+        self.fd = fd
+        self.content_length = content_length
+        self.remain = content_length
+
+    def read(self, size):
+        if size <= self.remain:
+            try:
+                data = self.fd.read(size)
+            except socket.error:
+                raise IOError(self)
+            self.remain -= size
+        elif self.remain:
+            data = self.fd.read(self.remain)
+            self.remain = 0
+        else:
+            data = None
+        return data
+
+    def __repr__(self):
+        return '<FileWrapper %s len: %s, read: %s>' % (
+                self.fd, self.content_length, self.content_length - self.keep)
 
 class GitRepository(object):
     git_folder_signature = set(['config', 'head', 'info', 'objects', 'refs'])
@@ -48,7 +75,8 @@ class GitRepository(object):
         """WSGI Response producer for HTTP GET Git Smart HTTP /info/refs request."""
 
         git_command = request.GET['service']
-        assert git_command in self.commands
+        if git_command no in self.commands:
+            return exc.HTTPMethodNotAllowed()
 
         # note to self:
         # please, resist the urge to add '\n' to git capture and increment line count by 1.
@@ -77,12 +105,19 @@ class GitRepository(object):
         """
 
         git_command = request.path_info.strip('/')
-        assert git_command in self.commands
+        if git_command no in self.commands:
+            return exc.HTTPMethodNotAllowed()
+
+        content_length = int(request.headers['content-length'])
+        if content_length:
+            inputstream = FileWrapper(request.body_file, content_length)
+        else:
+            inputstream = StringIO()
 
         try:
             out = subprocessio.SubprocessIOChunker(
                 r'git %s --stateless-rpc "%s"' % (git_command[4:], self.content_path),
-                inputstream = request.environ['wsgi.input']
+                inputstream = inputstream
                 )
         except EnvironmentError, e:
             raise exc.HTTPExpectationFailed()
