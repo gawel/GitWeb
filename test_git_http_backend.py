@@ -32,7 +32,7 @@ def set_up_server(remote_base_path):
     # setting up the server.
     server = wsgiserver.CherryPyWSGIServer(
         (ip, port),
-        git_http_backend.assemble_WSGI_git_app(remote_base_path)
+        git_http_backend.GitDirectory(remote_base_path)
         )
     ip = 'localhost' # the IP the socket yields is '0.0.0.0' which is not useful for testing.
     return ip, port, server

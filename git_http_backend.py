@@ -28,19 +28,21 @@ along with git_http_backend.py Project.  If not, see <http://www.gnu.org/license
 import os
 import sys
 import logging
+import subprocess
 import subprocessio
 from webob import Request, Response, exc
 
 log = logging.getLogger(__name__)
 
 class GitRepository(object):
-    bufsize = 65536
-    gzip_response = False
     git_folder_signature = set(['config', 'head', 'info', 'objects', 'refs'])
     commands = ['git-upload-pack', 'git-receive-pack']
 
     def __init__(self, content_path):
+        files = set([f.lower() for f in os.listdir(content_path)])
+        assert self.git_folder_signature.intersection(files) == self.git_folder_signature, content_path
         self.content_path = content_path
+        self.valid_accepts = ['application/x-%s-result' % c for c in self.commands]
 
     def inforefs(self, request):
         """WSGI Response producer for HTTP GET Git Smart HTTP /info/refs request."""
@@ -87,7 +89,7 @@ class GitRepository(object):
 
         if git_command in [u'git-receive-pack']:
             # updating refs manually after each push. Needed for pre-1.7.0.4 git clients using regular HTTP mode.
-            subprocess.call(u'git --git-dir "%s" update-server-info' % repo_path, shell=True)
+            subprocess.call(u'git --git-dir "%s" update-server-info' % self.content_path, shell=True)
 
         resp = Response()
         resp.content_type = 'application/x-%s-result' % git_command.encode('utf8')
@@ -97,10 +99,9 @@ class GitRepository(object):
 
     def __call__(self, environ, start_response):
         request = Request(environ)
-        print request
         if request.path_info.startswith('/info/refs'):
             app = self.inforefs
-        else:
+        elif [a for a in self.valid_accepts if a in request.accept]:
             app = self.backend
         try:
             resp = app(request)
@@ -109,9 +110,43 @@ class GitRepository(object):
         except Exception, e:
             log.exception(e)
             resp = exc.HTTPInternalServerError()
-        #print 'Response\n', resp
         return resp(environ, start_response)
+
+class GitDirectory(object):
+
+    def __init__(self, content_path, auto_create=True):
+        if not os.path.isdir(content_path):
+            if auto_create:
+                os.makedirs(content_path)
+            else:
+                raise OSError(content_path)
+        self.content_path = content_path
+        self.auto_create = auto_create
+
+    def __call__(self, environ, start_response):
+        request = Request(environ)
+        repo_name = request.path_info_pop()
+        content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
+        if self.content_path not in content_path:
+            return exc.HTTPForbidden()(environ, start_response)
+        try:
+            app = GitRepository(content_path)
+        except (AssertionError, OSError):
+            if os.path.isdir(os.path.join(content_path, '.git')):
+                app = GitRepository(os.path.join(content_path, '.git'))
+            else:
+                if self.auto_create and 'application/x-git-receive-pack-result' in request.accept:
+                    subprocess.call(u'git init --quiet --bare "%s"' % content_path, shell=True)
+                    app = GitRepository(content_path)
+                else:
+                    return exc.HTTPNotFound()(environ, start_response)
+        return app(environ, start_response)
+
+
 
 def make_app(global_config, content_path='', **local_config):
     return GitRepository(content_path)
+
+def make_dir_app(global_config, content_path='', auto_create=None, **local_config):
+    return GitDirectory(content_path, auto_create=auto_create)
 
