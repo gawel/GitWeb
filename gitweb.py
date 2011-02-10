@@ -167,7 +167,7 @@ class GitDirectory(object):
     def __call__(self, environ, start_response):
         print environ['wsgi.input']
         request = Request(environ)
-        print request.path_info
+        print request.path
         print environ['wsgi.input']
         repo_name = request.path_info_pop()
         content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
@@ -189,8 +189,12 @@ class GitDirectory(object):
 
 
 def make_app(global_config, content_path='', **local_config):
+    if 'content_path' in global_config:
+        content_path = global_config['content_path']
     return GitRepository(content_path)
 
 def make_dir_app(global_config, content_path='', auto_create=None, **local_config):
+    if 'content_path' in global_config:
+        content_path = global_config['content_path']
     return GitDirectory(content_path, auto_create=auto_create)
 

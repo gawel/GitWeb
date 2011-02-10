@@ -2,23 +2,24 @@ import os
 
 from setuptools import setup, find_packages
 
-setup(name='git_http_backend',
+setup(name='GitWeb',
       version='0.1',
-      description='git_http_backend',
-      long_description='',
+      description='WSGI application to serve a git repository',
+      long_description=open('README.txt').read(),
       classifiers=[
         "Programming Language :: Python",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         ],
-      author='',
-      author_email='',
-      url='',
+      author='Gael Pasgrimaud',
+      author_email='gael@gawel.org',
+      url='https://github.com/gawel/GitWeb',
+      licence='GPL',
       keywords='web',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
-      install_requires=['Paste', 'WebOb'],
+      install_requires=['WebOb'],
       tests_require=[],
       entry_points = """\
       """,
