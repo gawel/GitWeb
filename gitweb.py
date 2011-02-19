@@ -142,7 +142,9 @@ class GitRepository(object):
         except Exception, e:
             log.exception(e)
             resp = exc.HTTPInternalServerError()
-        return resp(environ, start_response)
+
+        start_response(resp.status, resp.headers.items())
+        return resp.app_iter
 
 class GitDirectory(object):
 
@@ -158,6 +160,9 @@ class GitDirectory(object):
     def __call__(self, environ, start_response):
         request = Request(environ)
         repo_name = request.path_info_pop()
+        if not repo_name.endswith('.git'):
+            return exc.HTTPNotFound()(environ, start_response)
+        repo_name = repo_name[:-4]
         content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
         if self.content_path not in content_path:
             return exc.HTTPForbidden()(environ, start_response)
