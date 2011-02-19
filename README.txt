@@ -28,12 +28,16 @@ Here is a simple Paste config file::
 
   [server:main]
   use = egg:gunicorn
+  port = 8080
 
   [app:main]
   use = egg:GitWeb
   content_path = %(here)s/repos
   auto_create = true
 
+Now try::
+
+  git clone . http://localhost:8080/repo.git
 
 License
 =======
