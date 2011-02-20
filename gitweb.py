@@ -63,6 +63,8 @@ class GitRepository(object):
     commands = ['git-upload-pack', 'git-receive-pack']
 
     def __init__(self, content_path):
+        if os.path.isdir(os.path.join(content_path, '.git')):
+            content_path = os.path.join(content_path, '.git')
         files = set([f.lower() for f in os.listdir(content_path)])
         assert self.git_folder_signature.intersection(files) == self.git_folder_signature, content_path
         self.content_path = content_path
@@ -148,7 +150,9 @@ class GitRepository(object):
 
 class GitDirectory(object):
 
-    def __init__(self, content_path, auto_create=True):
+    repository_app = GitRepository
+
+    def __init__(self, content_path, auto_create=True, **kwargs):
         if not os.path.isdir(content_path):
             if auto_create:
                 os.makedirs(content_path)
@@ -156,6 +160,16 @@ class GitDirectory(object):
                 raise OSError(content_path)
         self.content_path = content_path
         self.auto_create = auto_create
+        if 'pre_clone_hook' in kwargs:
+            self.pre_clone_hook = kwargs['pre_clone_hook']
+        if 'post_clone_hook' in kwargs:
+            self.pre_clone_hook = kwargs['post_clone_hook']
+
+    def pre_clone_hook(self, content_path, request):
+        pass
+
+    def post_clone_hook(self, content_path, request):
+        pass
 
     def __call__(self, environ, start_response):
         request = Request(environ)
@@ -170,11 +184,16 @@ class GitDirectory(object):
             app = GitRepository(content_path)
         except (AssertionError, OSError):
             if os.path.isdir(os.path.join(content_path, '.git')):
-                app = GitRepository(os.path.join(content_path, '.git'))
+                app = self.repository_app(os.path.join(content_path, '.git'))
             else:
                 if self.auto_create and 'application/x-git-receive-pack-result' in request.accept:
-                    subprocess.call(u'git init --quiet --bare "%s"' % content_path, shell=True)
-                    app = GitRepository(content_path)
+                    try:
+                        self.pre_clone_hook(content_path, request)
+                        subprocess.call(u'git init --quiet --bare "%s"' % content_path, shell=True)
+                        self.post_clone_hook(content_path, request)
+                    except exc.HTTPException, e:
+                        return e(environ, start_response)
+                    app = self.repository_app(content_path)
                 else:
                     return exc.HTTPNotFound()(environ, start_response)
         return app(environ, start_response)

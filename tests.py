@@ -25,6 +25,7 @@ def get_free_port():
 ini_file = """
 [server:main]
 use = egg:gunicorn
+#use = egg:Paste#http
 port = %(port)s
 
 [app:main]
@@ -60,7 +61,7 @@ class TestGit(unittest.TestCase):
         open(config, 'w').write(ini_file % locals())
 
         cmd = ['bin/paster', 'serve', config]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmd) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.addCleanup(kill, p.pid)
 
         os.chdir(repo)
