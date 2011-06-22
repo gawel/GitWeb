@@ -63,8 +63,6 @@ class GitRepository(object):
     commands = ['git-upload-pack', 'git-receive-pack']
 
     def __init__(self, content_path):
-        if os.path.isdir(os.path.join(content_path, '.git')):
-            content_path = os.path.join(content_path, '.git')
         files = set([f.lower() for f in os.listdir(content_path)])
         assert self.git_folder_signature.intersection(files) == self.git_folder_signature, content_path
         self.content_path = content_path
@@ -176,15 +174,14 @@ class GitDirectory(object):
         repo_name = request.path_info_pop()
         if not repo_name.endswith('.git'):
             return exc.HTTPNotFound()(environ, start_response)
-        repo_name = repo_name[:-4]
         content_path = os.path.realpath(os.path.join(self.content_path, repo_name))
         if self.content_path not in content_path:
             return exc.HTTPForbidden()(environ, start_response)
         try:
             app = GitRepository(content_path)
         except (AssertionError, OSError):
-            if os.path.isdir(os.path.join(content_path, '.git')):
-                app = self.repository_app(os.path.join(content_path, '.git'))
+            if os.path.isdir(content_path):
+                app = self.repository_app(content_path)
             else:
                 if self.auto_create and 'application/x-git-receive-pack-result' in request.accept:
                     try:
