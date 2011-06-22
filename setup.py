@@ -3,7 +3,7 @@ import os
 from setuptools import setup, find_packages
 
 setup(name='GitWeb',
-      version='0.2',
+      version='0.4',
       description='WSGI application to serve a git repository',
       long_description=open('README.txt').read(),
       classifiers=[
@@ -16,6 +16,7 @@ setup(name='GitWeb',
       url='https://github.com/gawel/GitWeb',
       licence='GPL',
       keywords='web',
+      py_modules = ['gitweb', 'subprocessio'],
       packages=find_packages(exclude=['tests']),
       include_package_data=True,
       zip_safe=False,

@@ -1,10 +1,6 @@
-#!/usr/bin/env python
 '''
 Module provides WSGI-based methods for handling HTTP Get and Post requests that
 are specific only to git-http-backend's Smart HTTP protocol.
-
-See __version__ statement below for indication of what version of Git's
-Smart HTTP server this backend is (designed to be) compatible with.
 
 Copyright (c) 2011  Gael Pasgrimaud <gael@gawel.org>
 
@@ -134,6 +130,7 @@ class GitRepository(object):
             app = self.inforefs
         elif [a for a in self.valid_accepts if a in request.accept]:
             app = self.backend
+
         try:
             resp = app(request, environ)
         except exc.HTTPException, e:
