@@ -84,6 +84,7 @@ class GitRepository(object):
                 starting_values = [ str(hex(len(smart_server_advert)+4)[2:].rjust(4,'0') + smart_server_advert + '0000') ]
                 )
         except EnvironmentError, e:
+            log.exception(e)
             raise exc.HTTPExpectationFailed()
         resp = Response()
         resp.content_type = 'application/x-%s-advertisement' % str(git_command)
@@ -112,6 +113,7 @@ class GitRepository(object):
                 inputstream = inputstream
                 )
         except EnvironmentError, e:
+            log.exception(e)
             raise exc.HTTPExpectationFailed()
 
         if git_command in [u'git-receive-pack']:
